@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#090b1b">
+<title>Neón Rush</title>
+<style>
+:root{--bg:#090b1b;--cyan:#38f8ff;--pink:#ff3ca6;--yellow:#ffe66d}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#18204b 0%,var(--bg) 60%);color:#fff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:14px}
+.app{width:min(100%,520px);text-align:center}.brand{font-weight:1000;font-size:clamp(30px,8vw,48px);letter-spacing:3px;margin:4px 0;color:white;text-shadow:0 0 12px var(--cyan),0 0 26px #5b4bff}.sub{color:#b9c6ff;margin:0 0 14px;font-size:14px}
+.hud{display:flex;gap:8px;margin-bottom:10px}.pill{flex:1;background:#ffffff0c;border:1px solid #ffffff24;border-radius:14px;padding:9px 4px;font-size:12px;color:#b9c6ff}.pill strong{display:block;color:#fff;font-size:20px}
+.stage{position:relative;border:1px solid #4e5b9b;border-radius:22px;overflow:hidden;box-shadow:0 0 32px #362aff30;background:#070a19}canvas{display:block;width:100%;height:auto;touch-action:none}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:#070a19d9;backdrop-filter:blur(5px)}.overlay h2{font-size:30px;margin:0 0 8px;text-shadow:0 0 14px var(--pink)}.overlay p{color:#d2d8ff;line-height:1.5;max-width:300px;margin:0 0 18px}.btn{border:0;border-radius:999px;padding:13px 25px;font-weight:900;font-size:16px;color:#08101e;background:linear-gradient(100deg,var(--cyan),#9d8cff);box-shadow:0 0 22px #38f8ff40;cursor:pointer}.btn:active{transform:scale(.97)}.controls{display:flex;gap:10px;margin-top:12px}.control{flex:1;border:1px solid #ffffff2b;background:#ffffff0d;color:#fff;border-radius:14px;padding:13px;font-size:21px;touch-action:manipulation}.hint{font-size:12px;color:#9da9dc;margin:12px 0 0}.bottom{margin-top:10px;color:#9da9dc;font-size:12px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="brand">NEÓN RUSH</div><p class="sub">⚡ Esquiva. Sobrevive. ¡Rompe tu récord!</p>
+  <div class="hud"><div class="pill">PUNTOS<strong id="score">0</strong></div><div class="pill">RÉCORD<strong id="best">0</strong></div><div class="pill">NIVEL<strong id="level">1</strong></div></div>
+  <div class="stage">
+    <canvas id="game" width="360" height="520" aria-label="Juego Neón Rush"></canvas>
+    <div class="overlay" id="overlay"><h2>¿Listo para el reto?</h2><p>Mueve tu esfera con los botones o deslizando el dedo. Esquiva los bloques rojos y recoge las estrellas doradas.</p><button class="btn" id="start">▶ JUGAR</button></div>
+  </div>
+  <div class="controls"><button class="control" id="left" aria-label="Mover izquierda">◀</button><button class="control" id="right" aria-label="Mover derecha">▶</button></div>
+  <p class="hint">TIP: cada estrella suma 10 puntos. ¡Aguanta todo lo que puedas!</p>
+  <div class="bottom">Hecho para divertirse ✨ · No necesita internet después de abrirlo</div>
+</div>
+<script>
+(()=> {
+const c=document.getElementById('game'),ctx=c.getContext('2d'),overlay=document.getElementById('overlay');
+const scoreEl=document.getElementById('score'),bestEl=document.getElementById('best'),levelEl=document.getElementById('level');
+let player,obstacles,stars,particles,score,best=Number(localStorage.getItem('neonRushBest')||0),frame,running=false,raf,last=0,hold=0;
+bestEl.textContent=best;
+function reset(){player={x:180,y:448,r:12};obstacles=[];stars=[];particles=[];score=0;frame=0;hold=0;scoreEl.textContent='0';levelEl.textContent='1';}
+function start(){reset();running=true;overlay.style.display='none';last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(loop)}
+function end(){running=false;overlay.innerHTML='<h2>¡Fin del juego!</h2><p>Conseguiste <b>'+score+'</b> puntos. '+(score>=best?'¡Nuevo récord!':'¿Puedes superarlo?')+'</p><button class="btn" id="again">↻ VOLVER A JUGAR</button>';overlay.style.display='flex';document.getElementById('again').onclick=start}
+document.getElementById('start').onclick=start;
+function move(d){if(running)player.x=Math.max(18,Math.min(342,player.x+d))}
+document.getElementById('left').addEventListener('pointerdown',e=>{e.preventDefault();move(-30)});
+document.getElementById('right').addEventListener('pointerdown',e=>{e.preventDefault();move(30)});
+let touchX=null;c.addEventListener('pointerdown',e=>{touchX=e.clientX});
+c.addEventListener('pointermove',e=>{if(touchX!==null&&running){let dx=e.clientX-touchX;if(Math.abs(dx)>3){move(dx*.75);touchX=e.clientX}}});
+c.addEventListener('pointerup',()=>touchX=null);c.addEventListener('pointercancel',()=>touchX=null);
+window.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='a')move(-22);if(e.key==='ArrowRight'||e.key==='d')move(22);if(e.key===' '&&!running)start()});
+function spawn(){let level=1+Math.floor(score/100);if(frame%Math.max(18,48-level*3)===0){let w=24+Math.random()*30;obstacles.push({x:8+Math.random()*(344-w),y:-35,w,h:18+Math.random()*18,s:2.2+level*.35})}if(frame%72===0)stars.push({x:22+Math.random()*316,y:-20,r:8,s:2.4+Math.floor(score/100)*.25})}
+function burst(x,y,color){for(let i=0;i<12;i++)particles.push({x,y,vx:(Math.random()-.5)*5,vy:(Math.random()-.5)*5,life:24,color})}
+function loop(now){if(!running)return;let dt=Math.min(2,(now-last)/16.67||1);last=now;frame++;spawn();ctx.clearRect(0,0,360,520);
+ctx.strokeStyle='#1b2754';ctx.lineWidth=1;for(let x=0;x<360;x+=30){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,520);ctx.stroke()}for(let y=(frame*1.2)%30;y<520;y+=30){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(360,y);ctx.stroke()}
+for(const o of obstacles){o.y+=o.s*dt;ctx.save();ctx.shadowBlur=18;ctx.shadowColor='#ff3c76';ctx.fillStyle='#ff3c76';ctx.beginPath();ctx.roundRect(o.x,o.y,o.w,o.h,5);ctx.fill();ctx.restore()}
+for(const s of stars){s.y+=s.s*dt;ctx.save();ctx.translate(s.x,s.y);ctx.rotate(frame*.04);ctx.shadowBlur=18;ctx.shadowColor='#ffe66d';ctx.fillStyle='#ffe66d';ctx.beginPath();for(let i=0;i<10;i++){let r=i%2?4:10,a=i*Math.PI/5-Math.PI/2;ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r)}ctx.closePath();ctx.fill();ctx.restore();if(Math.hypot(s.x-player.x,s.y-player.y)<s.r+player.r){s.got=true;score+=10;burst(s.x,s.y,'#ffe66d');scoreEl.textContent=score;levelEl.textContent=1+Math.floor(score/100)}}
+stars=stars.filter(s=>s.y<550&&!s.got);obstacles=obstacles.filter(o=>o.y<550);
+for(const o of obstacles){if(player.x+player.r>o.x&&player.x-player.r<o.x+o.w&&player.y+player.r>o.y&&player.y-player.r<o.y+o.h){burst(player.x,player.y,'#ff3c76');score=Math.max(0,score);if(score>best){best=score;localStorage.setItem('neonRushBest',best);bestEl.textContent=best}drawParticles();end();return}}
+ctx.save();ctx.shadowBlur=26;ctx.shadowColor='#38f8ff';ctx.fillStyle='#38f8ff';ctx.beginPath();ctx.arc(player.x,player.y,player.r,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();ctx.restore();
+drawParticles();raf=requestAnimationFrame(loop)}
+function drawParticles(){particles=particles.filter(p=>p.life-->0);for(const p of particles){p.x+=p.vx;p.y+=p.vy;p.vy+=.04;ctx.globalAlpha=Math.max(0,p.life/24);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,3,3)}ctx.globalAlpha=1}
+function idle(){ctx.clearRect(0,0,360,520);for(let i=0;i<40;i++){let x=(i*73+frame*.2)%360,y=(i*131+frame*.5)%520;ctx.fillStyle=i%3?'#293568':'#38f8ff';ctx.globalAlpha=.35+(i%5)*.12;ctx.fillRect(x,y,2,2)}ctx.globalAlpha=1;if(!running){frame++;requestAnimationFrame(idle)}}
+idle();
+})();
+</script>
+</body>
+</html>
